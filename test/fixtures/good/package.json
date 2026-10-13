@@ -1,0 +1,1 @@
+{ "name": "good-pkg", "version": "1.2.0", "license": "MIT", "bin": { "good": "bin/good.js" }, "repository": { "type": "git", "url": "git+https://github.com/acme/good-pkg.git" } }

@@ -1,0 +1,54 @@
+{
+  "name": "readme-gauge",
+  "version": "1.0.0",
+  "description": "Lint READMEs for missing sections, broken and stale badges, stale install commands, missing usage examples, broken relative links and anchors, placeholders and license mismatches. Optional live link check. Text/JSON/SARIF/Markdown, allowlist with expiry, GitHub Action. Zero deps.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "readme-gauge": "bin/readme-gauge.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "action.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "readme",
+    "lint",
+    "markdown",
+    "documentation",
+    "badges",
+    "docs",
+    "linter",
+    "sarif",
+    "cli",
+    "github-action"
+  ],
+  "author": "Louis Wright <hello@louiswright.co.uk> (https://github.com/MrLouisWright)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrLouisWright/readme-gauge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MrLouisWright/readme-gauge/issues"
+  },
+  "homepage": "https://github.com/MrLouisWright/readme-gauge#readme"
+}
