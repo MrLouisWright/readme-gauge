@@ -1,34 +1,7 @@
 {
   "name": "readme-gauge",
   "version": "1.0.0",
-  "description": "Lint READMEs for missing sections, broken and stale badges, stale install commands, missing usage examples, broken relative links and anchors, placeholders and license mismatches. Optional live link check. Text/JSON/SARIF/Markdown, allowlist with expiry, GitHub Action. Zero deps.",
-  "type": "module",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./src/index.d.ts",
-      "default": "./src/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "bin": {
-    "readme-gauge": "bin/readme-gauge.js"
-  },
-  "files": [
-    "src",
-    "bin",
-    "action.yml",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "test": "node --test test/*.test.js"
-  },
+  "description": "Lint READMEs for missing sections, broken and stale badges, stale install commands, missing usage examples, broken relative links and anchors, placeholders and license mismatches. Checks JS code examples and imports, and the table of contents (--fix-toc). Optional live link check via static-link-sentinel. Text/JSON/SARIF/Markdown, allowlist with expiry, GitHub Action.",
   "keywords": [
     "readme",
     "lint",
@@ -54,5 +27,53 @@
   "bugs": {
     "url": "https://github.com/MrLouisWright/readme-gauge/issues"
   },
-  "homepage": "https://mrlouiswright.github.io/readme-gauge/"
+  "homepage": "https://mrlouiswright.github.io/readme-gauge/",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./src/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./src/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "readme-gauge": "bin/readme-gauge.js"
+  },
+  "files": [
+    "src",
+    "dist",
+    "bin",
+    "action.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "static-link-sentinel": "^1.1.0"
+  }
 }

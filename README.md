@@ -1,19 +1,19 @@
 # readme-gauge
 
-[![npm version](https://img.shields.io/npm/v/readme-gauge.svg)](https://www.npmjs.com/package/readme-gauge) [![CI](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml/badge.svg)](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml) [![Node](https://img.shields.io/node/v/readme-gauge.svg)](https://nodejs.org) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/readme-gauge.svg)](https://www.npmjs.com/package/readme-gauge) [![CI](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml/badge.svg)](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml) [![Node](https://img.shields.io/node/v/readme-gauge.svg)](https://nodejs.org) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![provenance](https://img.shields.io/badge/npm-provenance-blue)](https://docs.npmjs.com/generating-provenance-statements)
 
 > Lint READMEs for missing sections, broken badges, stale install commands and missing usage examples.
 
 `readme-gauge` reads your README the way a new user does. It flags what is missing or wrong: no install or usage section, a usage section without a code example, an install command for a package that was renamed (`npm i acme-widget` when the package is `acme-widgets`), a pinned old major, a Travis badge for a service that shut down in 2021, an npm badge for a different package, a workflow badge pointing at a file that no longer exists, relative links and `#anchors` that go nowhere, placeholder text (`TODO`, `lorem ipsum`), and a License section that disagrees with `package.json`. Every finding has a line number and a **concrete fix**.
 
-CLI, library and GitHub Action. Node.js 18+, **zero runtime dependencies**. By Louis Wright.
+CLI, library and GitHub Action. Node.js 18+, one runtime dependency ([static-link-sentinel](https://www.npmjs.com/package/static-link-sentinel), for the optional live link check). By Louis Wright.
 
 ## Features
 
 - **Sections:** required sections (`install`, `usage`, `license` by default) found by heading text with sensible aliases ("Getting started", "Licence", "Examples"…), plus empty sections, a missing `#` title and skipped heading levels.
 - **Install commands:** parses `npm`/`pnpm`/`yarn`/`bun`/`npx` commands in code blocks and inline code. Flags the wrong or misspelled package name, pinned majors older than `package.json`, global installs of packages without a `bin`, `--save`, Bower, and a CLI that's never shown.
 - **Badges:** shields.io / npm / packagephobia / bundlephobia badges naming another package, GitHub badges for another repository, Actions badges for a workflow file that doesn't exist, dead services (Travis CI .org, David DM, Greenkeeper, Gemnasium).
-- **Links:** relative link and image targets are checked on disk; `#anchors` are checked against GitHub's heading slugs (including duplicates and Unicode). `--check-links` also fetches external links and badge images.
+- **Links:** relative link and image targets are checked on disk; `#anchors` are checked against GitHub's heading slugs (including duplicates and Unicode). `--check-links` also fetches external links and badge images using static-link-sentinel's checker (retries, per-host rate limits, optional `--link-cache`).
 - **Output:** text, JSON, SARIF 2.1.0 and Markdown; `--fail-on`; exit codes 0/1/2; allowlist entries with expiry dates.
 
 ## Rules
@@ -169,7 +169,7 @@ console.log(formatMarkdown(report, { failOn: 'medium' }));
 
 ## Requirements
 
-Node.js 18 or newer. Zero runtime dependencies.
+Node.js 18 or newer. One runtime dependency: static-link-sentinel (live link checks).
 
 ## Support
 
@@ -190,3 +190,39 @@ Free to use under MIT, no attribution required. If readme-gauge helps you, a lin
 ## Licence
 
 MIT © Louis Wright ([Louis Wright](https://github.com/MrLouisWright))
+
+## Code examples and table of contents
+
+````md
+```js
+import { check } from 'readme-gauge';   // "readme-gauge" must be exported; the snippet must parse
+```
+````
+
+- `example-syntax-error`: a `js`/`mjs`/`cjs` block does not parse. Snippets are compiled, never run; ESM and top-level `await` are fine, shell sessions are skipped.
+- `example-import-missing`: an example imports `your-package/sub` but `exports` has no `./sub`. With `--check-exports` the package entry is loaded and every named import is checked as well (build first).
+- `toc-out-of-date`: the TOC (between `<!-- toc -->` and `<!-- tocstop -->`, or a "Contents" section) lists a heading that no longer exists, or misses one. `npx readme-gauge --fix-toc` rewrites it, or inserts a "Contents" section with markers.
+
+Live link checks (`--check-links`) use [static-link-sentinel](https://www.npmjs.com/package/static-link-sentinel)'s checker, with retries, per-host rate limits and an optional `--link-cache <file>`. For whole-site link checking, use static-link-sentinel directly.
+
+## Using with markdownlint
+
+readme-gauge checks README *content*; leave *formatting* (line length, list style, spacing) to [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2). Turn off the rules both tools cover so each problem is reported once:
+
+```json
+{ "default": true, "MD001": false, "MD041": false, "MD051": false, "MD013": false }
+```
+
+Save it as `.markdownlint.json` (it is also exported as `MARKDOWNLINT_CONFIG`), then run `npx markdownlint-cli2 README.md && npx readme-gauge`.
+
+## Module formats and types
+
+Ships ESM (`import`) and a bundled CommonJS build (`require`), with TypeScript declarations generated from the source:
+
+```js
+import * as lib from 'readme-gauge';      // ESM
+const lib = require('readme-gauge');      // CommonJS
+```
+
+Tests live in [`test/`](test) and run on Node 18, 20 and 22 in [GitHub Actions](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml), including a require+import check. Releases are published with `npm publish --provenance`.
+

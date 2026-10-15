@@ -2,6 +2,16 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { scan, slug } from './markdown.js';
 import { buildReport, UsageError } from './core.js';
+import { checkExternal, classifyExternal } from 'static-link-sentinel';
+import { lintExamples, jsSyntaxError, snippetImports, subpathExported } from './examples.js';
+import { findToc, checkToc, generateToc, updateToc } from './toc.js';
+
+export { lintExamples, jsSyntaxError, snippetImports, subpathExported, findToc, checkToc, generateToc, updateToc };
+
+/** readme-gauge rules that duplicate a markdownlint rule: disable one side when you run both. */
+export const MARKDOWNLINT_OVERLAP = { 'heading-level-skip': 'MD001', 'missing-title': 'MD041', 'broken-anchor': 'MD051', 'empty-section': 'MD043' };
+/** A markdownlint config that leaves README content to readme-gauge and formatting to markdownlint. */
+export const MARKDOWNLINT_CONFIG = { default: true, MD001: false, MD041: false, MD051: false, MD013: false };
 
 export { scan, slug };
 export * from './core.js';
@@ -21,6 +31,9 @@ export const RULES = {
   'deprecated-install-flag': { severity: 'low', title: 'Install command uses a deprecated tool or flag' },
   'missing-title': { severity: 'low', title: 'README does not start with a level-1 title' },
   'too-short': { severity: 'low', title: 'README is very short' },
+  'example-syntax-error': { severity: 'medium', title: 'A JavaScript code example does not parse' },
+  'example-import-missing': { severity: 'medium', title: 'A code example imports a subpath or name this package does not export' },
+  'toc-out-of-date': { severity: 'low', title: 'Table of contents does not match the headings' },
   'heading-level-skip': { severity: 'info', title: 'Heading level jumps (e.g. ## to ####)' },
   'insecure-url': { severity: 'info', title: 'http:// URL where https:// is available' },
 };
@@ -209,38 +222,43 @@ function findUp(dir, name) { let d = resolve(dir); for (;;) { if (existsSync(joi
 function lev(a, b) { if (a === b) return 0; const m = a.length; const n = b.length; if (Math.abs(m - n) > 3) return 99; let prev = Array.from({ length: n + 1 }, (_, i) => i); for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; } return prev[n]; }
 function closest(a, list) { let best = null; let d = 4; for (const x of list) { const k = lev(a, x); if (k < d) { d = k; best = x; } } return best; }
 
-/** Optional network check of external URLs. */
-export async function checkLinks(md, { timeout = 8000, concurrency = 6, fetchImpl = globalThis.fetch, only } = {}) {
-  const urls = [...new Map(md.links.filter((l) => /^https?:\/\//i.test(l.url)).filter((l) => !only || only(l)).map((l) => [l.url, l])).values()];
+/**
+ * Optional network check of external URLs, using static-link-sentinel's checker
+ * (concurrency, per-host rate limits, retries with backoff, redirect following, optional cache).
+ * Returns the links that are broken: [{ ...link, status, error }].
+ */
+export async function checkLinks(md, { timeout = 8000, concurrency = 6, only, cacheFile = null, retries = 2 } = {}) {
+  const links = [...new Map(md.links.filter((l) => /^https?:\/\//i.test(l.url)).filter((l) => !only || only(l)).map((l) => [l.url, l])).values()];
+  if (!links.length) return [];
+  const { results } = await checkExternal(links.map((l) => l.url), { timeout, concurrency, retries, cache: !!cacheFile, cacheFile: cacheFile || undefined, userAgent: 'readme-gauge (+https://github.com/MrLouisWright/readme-gauge)' });
   const bad = [];
-  let i = 0;
-  async function worker() {
-    while (i < urls.length) {
-      const l = urls[i++];
-      let status = 0; let err = null;
-      for (const method of ['HEAD', 'GET']) {
-        const ac = new AbortController(); const t = setTimeout(() => ac.abort(), timeout);
-        try { const r = await fetchImpl(l.url, { method, redirect: 'follow', signal: ac.signal, headers: { 'user-agent': 'readme-gauge (+https://github.com/MrLouisWright/readme-gauge)' } }); status = r.status; try { await r.body?.cancel?.(); } catch {} } catch (e) { err = e.name === 'AbortError' ? 'timeout' : e.cause?.code || e.message; } finally { clearTimeout(t); }
-        if (status && status < 400) break;
-        if (status && ![403, 405, 501].includes(status) && method === 'HEAD' && status !== 404 && status !== 410) continue;
-        if (status === 404 || status === 410) break;
-      }
-      if (!status || status >= 400) bad.push({ ...l, status, error: err });
-    }
+  for (const l of links) {
+    const r = results.get(l.url); if (!r) continue;
+    const f = classifyExternal(r).find((x) => x.ruleId === 'external-broken' || x.ruleId === 'external-error' || x.ruleId === 'external-timeout');
+    if (f) bad.push({ ...l, status: r.status || 0, error: r.error || null });
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
   return bad;
 }
 
 export async function check(dir, opts = {}, config = {}, configFile) {
-  const merged = { require: config.require, sections: config.sections, minWords: config.minWords, file: config.file, ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)) };
+  const merged = { require: config.require, sections: config.sections, minWords: config.minWords, file: config.file, examples: config.examples, checkExports: config.checkExports, toc: config.toc, tocMinLevel: config.tocMinLevel, tocMaxLevel: config.tocMaxLevel, linkCache: config.linkCache, ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)) };
   const { info, findings, md, file } = analyze(dir, merged);
   if (merged.checkLinks && md) {
     const ignore = (config.ignoreUrls || []).map((g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'));
-    for (const l of await checkLinks(md, { timeout: merged.timeout, fetchImpl: merged.fetchImpl, only: (x) => !ignore.some((re) => re.test(x.url)) })) {
+    for (const l of await checkLinks(md, { timeout: merged.timeout, cacheFile: merged.linkCache, only: (x) => !ignore.some((re) => re.test(x.url)) })) {
       const badge = l.kind === 'image';
       findings.push({ rule: badge ? 'broken-badge' : 'broken-link', severity: RULES[badge ? 'broken-badge' : 'broken-link'].severity, file, line: l.line, subject: l.url, message: `${badge ? 'image' : 'link'} ${l.url} is unreachable (${l.status ? 'HTTP ' + l.status : l.error})`, fix: 'Fix or remove the URL; add it to "ignoreUrls" if the site blocks bots.' });
     }
+  }
+  if (md && merged.examples !== false) {
+    let pkg = {}; try { pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')); } catch { /* none */ }
+    for (const f of await lintExamples(md, { pkg, dir, checkExports: !!merged.checkExports })) findings.push({ ...f, severity: RULES[f.rule].severity, file });
+  }
+  if (md && merged.toc !== false) {
+    const { problems } = checkToc(md, { minLevel: merged.tocMinLevel, maxLevel: merged.tocMaxLevel });
+    for (const p of problems) findings.push(p.kind === 'stale'
+      ? { rule: 'toc-out-of-date', severity: RULES['toc-out-of-date'].severity, file, line: p.entry.line, subject: `#${p.entry.anchor}`, message: `table of contents links to #${p.entry.anchor}, which is no longer a heading`, fix: 'Run readme-gauge --fix-toc (with <!-- toc --> / <!-- tocstop --> markers), or edit the entry.' }
+      : { rule: 'toc-out-of-date', severity: RULES['toc-out-of-date'].severity, file, line: p.heading.line, subject: p.heading.slug, message: `heading "${p.heading.title}" is missing from the table of contents`, fix: 'Run readme-gauge --fix-toc, or add the entry.' });
   }
   const tool = { name: 'readme-gauge', version: opts.toolVersion || '1.0.0', rules: RULES, emoji: '📘', defaultFile: 'README.md' };
   return buildReport(tool, info.file, findings, config, { now: opts.now, configFile, summaryLine: `${info.words} words, ${info.sections.length} heading(s), ${info.badges} badge(s), ${info.links} link(s)`, info });
