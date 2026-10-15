@@ -1,5 +1,7 @@
 # readme-gauge
 
+[![npm version](https://img.shields.io/npm/v/readme-gauge.svg)](https://www.npmjs.com/package/readme-gauge) [![CI](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml/badge.svg)](https://github.com/MrLouisWright/readme-gauge/actions/workflows/ci.yml) [![Node](https://img.shields.io/node/v/readme-gauge.svg)](https://nodejs.org) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > Lint READMEs for missing sections, broken badges, stale install commands and missing usage examples.
 
 `readme-gauge` reads your README the way a new user does. It flags what is missing or wrong: no install or usage section, a usage section without a code example, an install command for a package that was renamed (`npm i acme-widget` when the package is `acme-widgets`), a pinned old major, a Travis badge for a service that shut down in 2021, an npm badge for a different package, a workflow badge pointing at a file that no longer exists, relative links and `#anchors` that go nowhere, placeholder text (`TODO`, `lorem ipsum`), and a License section that disagrees with `package.json`. Every finding has a line number and a **concrete fix**.
