@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.0.0 (2026-10-15)
+## 1.1.0 (2026-10-17)
 
-### Added before first publish
+Re-release: these changes were committed after 1.0.0 was published but never reached npm. 1.0.0 on npm is the original first release.
+
+### Added
 
 - Code examples are checked: ```` ```js ```` blocks must parse (compiled, never run; top-level await and ESM allowed), and imports of this package must name a subpath in `exports` (`example-syntax-error`, `example-import-missing`). `--check-exports` also loads the package and checks named imports exist.
 - Table of contents: a `<!-- toc -->`/`<!-- tocstop -->` block or a "Contents" section is compared with the headings (`toc-out-of-date`); `--fix-toc` regenerates it (or inserts one).
@@ -14,6 +16,8 @@
 - Dual ESM + CommonJS: `import` loads `src/`, `require` loads a bundled `dist/index.cjs`, via package.json `exports`.
 - TypeScript declarations are generated from the source (`dist/types`) instead of hand-written.
 - CI runs build, tests and a require+import check on Node 18/20/22; releases use `npm publish --provenance`.
+
+## 1.0.0 (2026-10-15)
 
 First release, by Louis Wright.
 
