@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 - 2026-10-20
+
+- Fixed: `<!-- toc -->` / `<!-- tocstop -->` markers inside inline code or fenced code examples were treated as a real table of contents, causing false `toc-out-of-date` findings (and `--fix-toc` doing nothing). Markers now count only on a line of their own, outside code blocks.
+
 ## 1.1.0 (2026-10-17)
 
 Re-release: these changes were committed after 1.0.0 was published but never reached npm. 1.0.0 on npm is the original first release.
