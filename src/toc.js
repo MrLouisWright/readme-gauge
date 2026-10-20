@@ -1,13 +1,16 @@
 // Table of contents: detect, check against headings, regenerate between <!-- toc --> markers.
 import { slug } from './markdown.js';
 
-const START = /<!--\s*(toc|START doctoc[^>]*)\s*-->/i;
-const STOP = /<!--\s*(tocstop|\/toc|END doctoc[^>]*)\s*-->/i;
+// Markers count only on a line of their own and outside fenced code, so documentation that
+// mentions `<!-- toc -->` (inline code or an example block) is not mistaken for a TOC.
+const START = /^\s*<!--\s*(toc|START doctoc[^>]*)\s*-->\s*$/i;
+const STOP = /^\s*<!--\s*(tocstop|\/toc|END doctoc[^>]*)\s*-->\s*$/i;
+const inCode = (md, i) => (md.codeBlocks || []).some((b) => i + 1 >= b.start && i + 1 <= (b.end ?? Infinity));
 
 /** Find the TOC: a marker block, or a "Contents"/"Table of contents" section made of #anchor links. */
 export function findToc(md) {
-  const s = md.lines.findIndex((l) => START.test(l));
-  if (s !== -1) { const e = md.lines.findIndex((l, i) => i > s && STOP.test(l)); return { start: s + 1, end: e === -1 ? null : e + 1, marker: true, entries: tocEntries(md.lines.slice(s + 1, e === -1 ? undefined : e), s + 2) }; }
+  const s = md.lines.findIndex((l, i) => START.test(l) && !inCode(md, i));
+  if (s !== -1) { const e = md.lines.findIndex((l, i) => i > s && STOP.test(l) && !inCode(md, i)); return { start: s + 1, end: e === -1 ? null : e + 1, marker: true, entries: tocEntries(md.lines.slice(s + 1, e === -1 ? undefined : e), s + 2) }; }
   const sec = md.sections.find((x) => /^(table of contents|contents|toc|index)$/i.test(x.title.trim()));
   if (!sec) return null;
   const body = md.lines.slice(sec.line, sec.endLine);

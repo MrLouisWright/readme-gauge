@@ -65,3 +65,10 @@ test('CLI --fix-toc inserts a TOC and the README then passes the toc check', () 
 test('markdownlint interop config disables overlapping rules', () => {
   assert.equal(MARKDOWNLINT_CONFIG.MD001, false); assert.equal(MARKDOWNLINT_CONFIG.MD041, false);
 });
+
+test('TOC markers in inline code or fenced examples are not treated as a TOC', () => {
+  const text = `# pkg\n\n## A\n\nPut the TOC between \`<!-- toc -->\` and \`<!-- tocstop -->\`.\n\n${fence}md\n<!-- toc -->\n- [X](#x)\n<!-- tocstop -->\n${fence}\n\n## B\n`;
+  const md = scan(text);
+  assert.equal(checkToc(md).toc, null);
+  assert.equal(updateToc(text, md), null);
+});
